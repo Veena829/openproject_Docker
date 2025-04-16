@@ -18,7 +18,7 @@ resource "aws_lb_target_group" "alb_target_group" {
     target_type = "instance"
 
     health_check {
-        path                = "/health"
+        path                = "/login"
         port                = "8080"
         protocol            = "HTTP"
         interval            = 30
