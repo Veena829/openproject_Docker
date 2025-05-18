@@ -1,19 +1,20 @@
-name: Deploy Lambda via Terraform
+name: Terraform Deployment
 
 on:
   workflow_dispatch:
     inputs:
       action:
-        description: 'Terraform action to perform (apply or destroy)'
+        description: 'Action to perform'
         required: true
-        default: 'apply'
-
-env:
-  AWS_REGION: us-east-1
-  AWS_ACCOUNT_ID: 273354635930
+        default: 'plan'
+        type: choice
+        options:
+          - plan
+          - apply
+          - destroy
 
 jobs:
-  terraform-deploy:
+  terraform:
     runs-on: ubuntu-latest
 
     permissions:
@@ -21,28 +22,34 @@ jobs:
       contents: read
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+    - name: Checkout repository
+      uses: actions/checkout@v2
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          role-to-assume: arn:aws:iam::273354635930:role/github-oidc
-          aws-region: us-east-1
+    - name: Set up Terraform
+      uses: hashicorp/setup-terraform@v1
+      with:
+        terraform_version: 1.0.0
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2
+    - name: Configure AWS credentials using OIDC
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        role-to-assume: arn:aws:iam::116981791124:role/idp-role
+        aws-region: us-west-1
 
-      - name: Terraform Init
-        run: terraform init
+    - name: Initialize Terraform
+      run: terraform init
 
-      - name: Terraform Plan
-        run: terraform plan
+    - name: Validate Terraform
+      run: terraform validate
 
-      - name: Terraform Apply or Destroy
-        run: |
-          if [ "${{ github.event.inputs.action }}" = "destroy" ]; then
-            terraform destroy -auto-approve
-          else
-            terraform apply -auto-approve
-          fi
+    - name: Terraform Plan
+      if: github.event.inputs.action == 'plan'
+      run: terraform plan
+
+    - name: Terraform Apply
+      if: github.event.inputs.action == 'apply'
+      run: terraform apply -auto-approve
+
+    - name: Terraform Destroy
+      if: github.event.inputs.action == 'destroy'
+      run: terraform destroy -auto-approve
